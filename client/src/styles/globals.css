@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+  --radius: 5px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background-color: #0a0a0a;
+}
+
+.custom-border{
+  border-color: #27272a;
+}
+.accordion-trigger {
+  display: flex;
+  justify-content: space-between; /* Ensures elements are spaced out evenly */
+  align-items: center; /* Keeps items vertically aligned */
+  width: 100%; /* Full width to maintain layout consistency */
+}
+
+.category-title {
+  width: 30%; /* Allocates a fixed percentage of width to avoid displacement */
+  white-space: normal; /* Allows wrapping */
+  text-align: left; /* Ensures text aligns to the left */
+}
+
+.grade-badge {
+  width: 40%; /* Center section width */
+  text-align: center; /* Ensures the badge is centered */
+}
+
+.grade-text {
+  width: 30%; /* Allocates width and ensures alignment to the right */
+  text-align: right; /* Right aligns the grade text */
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
