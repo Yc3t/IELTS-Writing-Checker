@@ -23,6 +23,9 @@ const Editor: React.FC = () => {
         body: JSON.stringify({ essay, topic })
       });
       const data = await response.json();
+      for (const trait in data) {
+        console.log(`${trait}: ${data[trait]}`);
+      }
       setLoading(false);
       if (response.ok) {
         router.push({

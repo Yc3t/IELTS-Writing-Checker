@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button"
 import { TooltipTrigger, TooltipContent, Tooltip, TooltipProvider } from "@/components/ui/tooltip"
 import { Label } from "@/components/ui/label"
@@ -8,9 +7,84 @@ import { AccordionTrigger, AccordionContent, AccordionItem, Accordion } from "@/
 import { Badge } from "@/components/ui/badge"
 import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
+import { ChangeEvent, FormEvent,useState } from 'react';
 
+interface EvaluationResult {
+  score: string;
+  feedback: string;
+}
 
-export default function dashboard() {
+interface EvaluationResults {
+  coherenceAndCohesion?: EvaluationResult;
+  grammaticalRangeAndAccuracy?: EvaluationResult;
+  lexicalResource?: EvaluationResult;
+  taskResponse?: EvaluationResult;
+}
+
+export default function Dashboard() {
+  const [inputText, setInputText] = useState<string>('');
+  const [topicText, setTopicText] = useState<string>('');
+  const [evaluationResults, setEvaluationResults] = useState<EvaluationResults>({});
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
+
+  const handleInputChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
+    setInputText(event.target.value);
+  };
+
+  const handleTopicChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
+    setTopicText(event.target.value);
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('http://localhost:8080/api/evaluate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ essay: inputText, topic: topicText })
+      });
+      const responseText = await response.text();
+      if (response.ok) {
+        parseEvaluationResults(responseText);
+      } else {
+        throw new Error('Failed to fetch scores');
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const parseEvaluationResults = (responseText: string) => {
+    const categories = responseText.split('<final>');
+    let results: EvaluationResults = {};
+
+    categories.forEach((text: string) => {
+      if (text.includes('Coherence and Cohesion')) {
+        results.coherenceAndCohesion = extractScoreAndFeedback(text);
+      } else if (text.includes('Grammatical Range and Accuracy')) {
+        results.grammaticalRangeAndAccuracy = extractScoreAndFeedback(text);
+      } else if (text.includes('Lexical Resource')) {
+        results.lexicalResource = extractScoreAndFeedback(text);
+      } else if (text.includes('Task Response')) {
+        results.taskResponse = extractScoreAndFeedback(text);
+      }
+    });
+
+    setEvaluationResults(results);
+  };
+
+  const extractScoreAndFeedback = (text: string): EvaluationResult => {
+    const scoreMatch = text.match(/<final>(.*?)<final>/);
+    const score = scoreMatch ? scoreMatch[1] : '';
+    const feedback = text.replace(/<final>.*?<final>/, '').trim();
+    return { score, feedback };
+  }
   return (
     <div key="1" className="grid h-screen w-full pl-[56px] ">
       <aside className="inset-y fixed  left-0 z-20 flex h-full flex-col border-r custom-border">
@@ -108,61 +182,45 @@ export default function dashboard() {
         </header>
         
 
-        <main className="grid flex-1 gap-4 overflow-auto p-4 lg:grid-cols-2 ">
-        { /**================================================================================================
-           *                                      Message section
-  *================================================================================================**/ }
-          <div className="relative flex h-full min-h-[50vh] flex-col rounded-xl bg-cust-black p-4 lg:order-1 ">
-            <Badge className="absolute right-3 top-3" variant="outline">
-              Writing
-            </Badge>
-            <div className="flex-1" />
-            <form
-              className="relative overflow-hidden rounded-lg border bg-background focus-within:ring-1 focus-within:ring-ring custom-border"
-              x-chunk="dashboard-03-chunk-1"
-            >
-              <Label className="sr-only" htmlFor="message">
-                Message
-              </Label>
-              <div className="bg-black">
-              <Textarea
-                className="min-h-12 resize-none border-0 p-3 shadow-none focus-visible:ring-0 custom-border"
-                id="message"
-                placeholder="Insert your writing here..."
-              />
-              <div className="flex items-center p-3 pt-0">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button size="icon" variant="ghost">
-                        <PaperclipIcon className="size-4" />
-                        <span className="sr-only">Attach file</span>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top">Attach File</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button size="icon" variant="ghost">
-                        <MicIcon className="size-4" />
-                        <span className="sr-only">Use Microphone</span>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top">Use Microphone</TooltipContent>
-                  </Tooltip>
-                  <Button className="ml-auto gap-1.5" size="sm" type="submit">
+        <main className="flex-1 overflow-auto p-4 grid lg:grid-cols-4 gap-4">
+              {/* Topic Section as Text Area */}
+              <div className="lg:col-span-2 flex flex-col space-y-4">
+              <div className="relative flex min-h-[20vh] h-auto flex-col rounded-xl bg-cust-black p-4">
+                <Badge className="absolute right-3 top-3" variant="outline">
+                  Topic
+                </Badge>
+                <Textarea
+                  className="flex-1 resize-none border-0 p-3 shadow-none focus-visible:ring-0 custom-border text-white bg-transparent"
+                  placeholder="Enter topic here..."
+                  value={topicText}
+                  onChange={handleTopicChange}
+                />
+              </div>
+            {/* Writing Section */}
+            <div className="relative flex h-full min-h-[50vh] flex-col rounded-xl bg-cust-black p-4">
+              <Badge className="absolute right-3 top-3" variant="outline">
+                Writing
+              </Badge>
+              <form onSubmit={handleSubmit} className="flex flex-col flex-1">
+                <Textarea
+                  className="flex-1 resize-none border-0 p-3 shadow-none focus-visible:ring-0 custom-border text-white bg-transparent"
+                  placeholder="Insert your writing here..."
+                  value={inputText}
+                  onChange={handleInputChange}
+                />
+                <div className="flex justify-end pt-2">
+                  <Button className="gap-1.5 text-sm border-r-2" size="sm" type="submit">
                     Send
                     <CornerDownLeftIcon className="size-3.5" />
                   </Button>
-                </TooltipProvider>
                 </div>
-              </div>
-            </form>
+              </form>
+            </div>
           </div>
         { /**================================================================================================
            *                                      Analysis Section
   *================================================================================================**/ }
-          <div className="relative hidden flex-col items-start gap-8 md:flex lg:order-2">
+          <div className="lg:col-span-2 relative flex-col items-start gap-8 flex">
             <form className="grid w-full items-start gap-6 ">
               <fieldset className="grid gap-6 rounded-lg border p-4 custom-border">
                 <legend className="-ml-1 px-1 text-sm font-medium">Analyze</legend>
