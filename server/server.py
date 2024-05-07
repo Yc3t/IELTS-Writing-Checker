@@ -5,11 +5,10 @@ import dotenv
 from dotenv import load_dotenv
 import os
 app = Quart(__name__)
-app = cors(app, allow_origin="*")  # Adjust CORS as necessary for your environment
+app = cors(app, allow_origin="*")  #
 load_dotenv()
 
-# Placeholder imports and function definitions (you should replace these with your actual imports and function definitions)
-from groq import AsyncGroq  # This import is hypothetical as it depends on the actual library
+from groq import AsyncGroq  
 
 # Define necessary functions for interfacing with the Groq API
 def setup_prompt(trait, description):
@@ -165,7 +164,7 @@ async def evaluate():
             - Exceptional command with rare minor errors, showcasing nuanced and sophisticated language use.
             """
 
-    ]  # Please replace this with your actual criteria
+    ]  
     scores = await evaluate_essay(api_key, model, prompt_text, essay_text, traits, descriptions, criteria)
     return jsonify(scores)
 
