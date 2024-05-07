@@ -7,7 +7,8 @@ import { AccordionTrigger, AccordionContent, AccordionItem, Accordion } from "@/
 import { Badge } from "@/components/ui/badge"
 import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
-import { ChangeEvent, FormEvent,useState } from 'react';
+import { ChangeEvent, FormEvent,useEffect,useState } from 'react';
+import React from "react"
 
 interface EvaluationResult {
   score: string;
@@ -20,6 +21,7 @@ interface EvaluationResults {
   lexicalResource?: EvaluationResult;
   taskResponse?: EvaluationResult;
 }
+
 
 export default function Dashboard() {
   const [inputText, setInputText] = useState<string>('');
@@ -40,7 +42,7 @@ export default function Dashboard() {
     event.preventDefault();
     setLoading(true);
     setError('');
-
+  
     try {
       const response = await fetch('http://localhost:8080/api/evaluate', {
         method: 'POST',
@@ -49,6 +51,7 @@ export default function Dashboard() {
       });
       const responseText = await response.text();
       if (response.ok) {
+        console.log(responseText)
         parseEvaluationResults(responseText);
       } else {
         throw new Error('Failed to fetch scores');
@@ -59,32 +62,91 @@ export default function Dashboard() {
       setLoading(false);
     }
   };
+  
+  useEffect(() => {
+    if (Object.keys(evaluationResults).length > 0) {
+      console.log(evaluationResults); // Log results to console when they change
+    }
+  }, [evaluationResults]); // Dependency array to ensure logging happens only when evaluationResults changes
 
   const parseEvaluationResults = (responseText: string) => {
-    const categories = responseText.split('<final>');
-    let results: EvaluationResults = {};
-
-    categories.forEach((text: string) => {
-      if (text.includes('Coherence and Cohesion')) {
-        results.coherenceAndCohesion = extractScoreAndFeedback(text);
-      } else if (text.includes('Grammatical Range and Accuracy')) {
-        results.grammaticalRangeAndAccuracy = extractScoreAndFeedback(text);
-      } else if (text.includes('Lexical Resource')) {
-        results.lexicalResource = extractScoreAndFeedback(text);
-      } else if (text.includes('Task Response')) {
-        results.taskResponse = extractScoreAndFeedback(text);
+    let results: EvaluationResults = {}; // Initialize with the correct type
+    const responseSections = responseText.split(/<final>\d+\.\d+<final>/);
+  
+    responseSections.forEach(section => {
+      if (section.includes('Coherence and Cohesion')) {
+        results.coherenceAndCohesion = extractScoreAndFeedback(section);
+      } else if (section.includes('Grammatical Range and Accuracy')) {
+        results.grammaticalRangeAndAccuracy = extractScoreAndFeedback(section);
+      } else if (section.includes('Lexical Resource')) {
+        results.lexicalResource = extractScoreAndFeedback(section);
+      } else if (section.includes('Task Response')) {
+        results.taskResponse = extractScoreAndFeedback(section);
       }
     });
-
+  
     setEvaluationResults(results);
   };
+  
+  const extractScoreAndFeedback = (text: string) => {
+    // Debug: Log the text to be processed.
+    console.log("Text for Regex:", text);
+  
+    // Updated regex to match a number with optional decimal places.
+    const scoreRegex = /(\d+(?:\.\d+)?)/;
+    const scoreMatch = text.match(scoreRegex);
+    console.log("Score Match:", scoreMatch);  // Debug: Log the regex match.
+  
+    // Extract score if a match is found; otherwise, return 'N/A'.
+    const score = scoreMatch ? scoreMatch[1] : 'N/A';
+  
+    // Remove score from text to clean up feedback.
+    const cleanFeedback = text.replace(scoreRegex, '').trim();
+    console.log("Extracted Score:", score);  // Debug: Log the extracted score.
+  
+    return {
+      score: score,
+      feedback: cleanFeedback
+    };
+  };
 
-  const extractScoreAndFeedback = (text: string): EvaluationResult => {
-    const scoreMatch = text.match(/<final>(.*?)<final>/);
-    const score = scoreMatch ? scoreMatch[1] : '';
-    const feedback = text.replace(/<final>.*?<final>/, '').trim();
-    return { score, feedback };
-  }
+  
+  const formatFeedback = (feedback: string) => {
+    // Remove newline characters, parentheses, double quotes, backslash, and curly braces
+    const cleanedFeedback = feedback.replace(/\\n|[()""{}\\]/g, '');
+  
+    // Split the cleaned feedback into an array of lines
+    const lines = cleanedFeedback.split('\n');
+  
+    // Map over each line to create a React.Fragment with the line text and a line break
+    return lines.map((line, index, array) => (
+      <React.Fragment key={index}>
+        {line.trim()}
+        {index !== array.length - 1 && <br />}
+      </React.Fragment>
+    ));
+  };
+  const convertScoreToGrade = (score: string) => {
+    const num = parseFloat(score);
+    if (num >= 9) return 'A+';
+    if (num >= 8) return 'A';
+    if (num >= 7) return 'B';
+    if (num >= 6) return 'C';
+    if (num >= 5) return 'D';
+    return 'F';
+};
+
+// Then use this in your component
+<div className="grade-badge">
+    <Badge variant="outline">
+        {evaluationResults.coherenceAndCohesion ? convertScoreToGrade(evaluationResults.coherenceAndCohesion.score) : 'N/A'}
+    </Badge>
+</div>
+
+  
+  
+  
+
   return (
     <div key="1" className="grid h-screen w-full pl-[56px] ">
       <aside className="inset-y fixed  left-0 z-20 flex h-full flex-col border-r custom-border">
@@ -175,7 +237,11 @@ export default function Dashboard() {
       <div className="flex flex-col">
         <header className="sticky top-0 z-10 flex h-[57px] items-center gap-1 border-b bg-background px-4 custom-border ">
           <h1 className="text-xl font-semibold">Writing Checker</h1>
-          <Button className="ml-auto gap-1.5 text-sm" size="sm" variant="outline">
+          
+          <Button 
+          className="ml-auto gap-1.5 text-sm" size="sm" variant="outline"
+          
+          >
             <ShareIcon className="size-3.5" />
             Share
           </Button>
@@ -230,16 +296,17 @@ export default function Dashboard() {
                     <div className="relative h-20 w-20">
                 {/* Circular progress bar to display the band score */}
                 <CircularProgressbar 
-                      value={7.5} // This should be dynamic based on state or props
-                      maxValue={10}
-                      text={`${7.5}`} // Dynamic text in the middle of the circle
-                      styles={buildStyles({
-                        textColor: "white",
-                        pathColor: "#23fd11",
-                        trailColor: "gray",
-                        textSize: '30px',
-                      })}
-                    />
+                value={evaluationResults.coherenceAndCohesion ? parseFloat(evaluationResults.coherenceAndCohesion.score) : 0}
+                maxValue={10}
+                text={evaluationResults.coherenceAndCohesion ? evaluationResults.coherenceAndCohesion.score : 'N/A'}
+                styles={buildStyles({
+                  textColor: "white",
+                  pathColor: "#23fd11",
+                  trailColor: "gray",
+                  textSize: '30px',
+                })}
+              />
+
                     </div>
                   </div>
                   <div className="grid gap-3">
@@ -258,65 +325,107 @@ export default function Dashboard() {
               </fieldset>
               
               <Accordion className="grid gap-6 rounded-lg border p-4 custom-border" collapsible type="single">
-              <AccordionItem value="task-response1">
-            <AccordionTrigger className="flex justify-between items-center w-full">
-                <div className="category-title">Task Response</div>
-                <div className="grade-badge">
-                    <Badge variant="outline">A+</Badge>
-                </div>
-                <div className="grade-text">
-                    <span className="text-sm text-muted-foreground">Grade: 7.8</span>
-                </div>
-            </AccordionTrigger>
-            <AccordionContent>
-                <p>The response addresses the task effectively and provides a comprehensive solution.</p>
-            </AccordionContent>
-        </AccordionItem>
 
-        <AccordionItem value="task-response2">
-            <AccordionTrigger className="flex justify-between items-center w-full">
-                <div className="category-title">Coherence and Cohesion</div>
-                <div className="grade-badge">
-                    <Badge variant="outline">C+</Badge>
+              <AccordionItem value="coherence-and-cohesion">
+              <AccordionTrigger className="flex justify-between items-center w-full">
+                  <div className="category-title">Coherence and Cohesion</div>
+              <div className="grade-badge">
+                  <Badge variant="outline">
+                      {evaluationResults.coherenceAndCohesion ? convertScoreToGrade(evaluationResults.coherenceAndCohesion.score) : 'N/A'}
+                  </Badge>
+              </div>
+                  <div className="grade-text">
+                      <span className="text-sm text-muted-foreground">
+                          Grade: {evaluationResults.coherenceAndCohesion ? evaluationResults.coherenceAndCohesion.score : 'N/A'}
+                      </span>
+                  </div>
+              </AccordionTrigger>
+              <AccordionContent>
+              {evaluationResults.coherenceAndCohesion ? (
+                <div className="feedback-text">
+                  {formatFeedback(evaluationResults.coherenceAndCohesion.feedback)}
                 </div>
-                <div className="grade-text">
-                    <span className="text-sm text-muted-foreground">Grade: 7.8</span>
-                </div>
-            </AccordionTrigger>
-            <AccordionContent>
-                <p>The response addresses the task effectively and provides a comprehensive solution.</p>
+              ) : (
+                'No feedback available'
+              )}
             </AccordionContent>
-        </AccordionItem>
+          </AccordionItem>
 
-        <AccordionItem value="task-response3">
-            <AccordionTrigger className="flex justify-between items-center w-full">
-                <div className="category-title">Lexical Resource</div>
-                <div className="grade-badge">
-                    <Badge variant="outline">D-</Badge>
-                </div>
-                <div className="grade-text">
-                    <span className="text-sm text-muted-foreground">Grade: 5.8</span>
-                </div>
-            </AccordionTrigger>
-            <AccordionContent>
-                <p>The response addresses the task effectively and provides a comprehensive solution.</p>
-            </AccordionContent>
-        </AccordionItem>
 
-        <AccordionItem value="task-response4">
-            <AccordionTrigger className="flex justify-between items-center w-full">
-                <div className="category-title">Gramatical Range And Accuracy</div>
-                <div className="grade-badge">
-                    <Badge variant="outline">A+</Badge>
+            <AccordionItem value="grammatical-range">
+              <AccordionTrigger className="flex justify-between items-center w-full">
+                  <div className="category-title">Gramatical Range and Accuracy</div>
+              <div className="grade-badge">
+                  <Badge variant="outline">
+                      {evaluationResults.grammaticalRangeAndAccuracy ? convertScoreToGrade(evaluationResults.grammaticalRangeAndAccuracy.score) : 'N/A'}
+                  </Badge>
+              </div>
+                  <div className="grade-text">
+                      <span className="text-sm text-muted-foreground">
+                          Grade: {evaluationResults.grammaticalRangeAndAccuracy ? evaluationResults.grammaticalRangeAndAccuracy.score : 'N/A'}
+                      </span>
+                  </div>
+              </AccordionTrigger>
+              <AccordionContent>
+              {evaluationResults.grammaticalRangeAndAccuracy ? (
+                <div className="feedback-text">
+                  {formatFeedback(evaluationResults.grammaticalRangeAndAccuracy.feedback)}
                 </div>
-                <div className="grade-text">
-                    <span className="text-sm text-muted-foreground">Grade: 8.8</span>
-                </div>
-            </AccordionTrigger>
-            <AccordionContent>
-                <p>The response addresses the task effectively and provides a comprehensive solution.</p>
+              ) : (
+                'No feedback available'
+              )}
             </AccordionContent>
-        </AccordionItem>
+          </AccordionItem>
+
+          <AccordionItem value="lexical-resource">
+              <AccordionTrigger className="flex justify-between items-center w-full">
+                  <div className="category-title">Lexical Resource</div>
+              <div className="grade-badge">
+                  <Badge variant="outline">
+                      {evaluationResults.lexicalResource ? convertScoreToGrade(evaluationResults.lexicalResource.score) : 'N/A'}
+                  </Badge>
+              </div>
+                  <div className="grade-text">
+                      <span className="text-sm text-muted-foreground">
+                          Grade: {evaluationResults.lexicalResource ? evaluationResults.lexicalResource.score : 'N/A'}
+                      </span>
+                  </div>
+              </AccordionTrigger>
+              <AccordionContent>
+              {evaluationResults.lexicalResource ? (
+                <div className="feedback-text">
+                  {formatFeedback(evaluationResults.lexicalResource.feedback)}
+                </div>
+              ) : (
+                'No feedback available'
+              )}
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="task-response">
+              <AccordionTrigger className="flex justify-between items-center w-full">
+                  <div className="category-title">Task Response</div>
+              <div className="grade-badge">
+                  <Badge variant="outline">
+                      {evaluationResults.taskResponse ? convertScoreToGrade(evaluationResults.taskResponse.score) : 'N/A'}
+                  </Badge>
+              </div>
+                  <div className="grade-text">
+                      <span className="text-sm text-muted-foreground">
+                          Grade: {evaluationResults.taskResponse ? evaluationResults.taskResponse.score : 'N/A'}
+                      </span>
+                  </div>
+              </AccordionTrigger>
+              <AccordionContent>
+              {evaluationResults.taskResponse ? (
+                <div className="feedback-text">
+                  {formatFeedback(evaluationResults.taskResponse.feedback)}
+                </div>
+              ) : (
+                'No feedback available'
+              )}
+            </AccordionContent>
+          </AccordionItem>
 
               </Accordion>
             </form>
