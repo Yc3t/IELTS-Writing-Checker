@@ -47,9 +47,11 @@ body {
   width: 30%; /* Allocates width and ensures alignment to the right */
   text-align: right; /* Right aligns the grade text */
 }
+/* Add this style to your CSS file or <style> tag */
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
 }
+

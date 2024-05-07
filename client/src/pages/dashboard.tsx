@@ -251,7 +251,7 @@ export default function Dashboard() {
         <main className="flex-1 overflow-auto p-4 grid lg:grid-cols-4 gap-4">
               {/* Topic Section as Text Area */}
               <div className="lg:col-span-2 flex flex-col space-y-4">
-              <div className="relative flex min-h-[20vh] h-auto flex-col rounded-xl bg-cust-black p-4">
+              <div className="relative flex min-h-[20vh] h-auto flex-col rounded-xl bg-cust-black p-4 pt-5">
                 <Badge className="absolute right-3 top-3" variant="outline">
                   Topic
                 </Badge>
@@ -263,10 +263,8 @@ export default function Dashboard() {
                 />
               </div>
             {/* Writing Section */}
-            <div className="relative flex h-full min-h-[50vh] flex-col rounded-xl bg-cust-black p-4">
-              <Badge className="absolute right-3 top-3" variant="outline">
-                Writing
-              </Badge>
+           
+            <div className="relative flex h-full min-h-[50vh] flex-col rounded-xl bg-cust-black p-4 pt-5 ">
               <form onSubmit={handleSubmit} className="flex flex-col flex-1">
                 <Textarea
                   className="flex-1 resize-none border-0 p-3 shadow-none focus-visible:ring-0 custom-border text-white bg-transparent"
